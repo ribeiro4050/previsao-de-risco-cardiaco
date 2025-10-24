@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preditor de Doença Cardíaca (LGBM)</title>
+    <style>
+        /* Estilos CSS */
+        :root {
+            --primary-color: #007bff; /* Azul primário */
+            --secondary-color: #6c757d; /* Cinza secundário */
+            --background-color: #f8f9fa; /* Fundo claro */
+            --card-background: #ffffff; /* Fundo do card */
+            --shadow-light: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--card-background);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        h2 {
+            color: var(--secondary-color);
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        input[type="number"], select {
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus, select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .button-submit {
+            grid-column: 1 / -1; /* Ocupa todas as colunas */
+            padding: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 20px;
+        }
+
+        .button-submit:hover {
+            background-color: #0056b3;
+        }
+        
+        .button-submit:active {
+            transform: scale(0.99);
+        }
+
+        /* Área de resultado */
+        .result-area {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px dashed var(--secondary-color);
+            border-radius: 8px;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Avaliação de Risco Cardíaco</h1>
+        <h2>Insira os dados do paciente para a classificação</h2>
+
+        <form id="predictionForm" class="form-grid">
+            
+            <div class="form-group">
+                <label for="age">Idade</label>
+                <input type="number" id="age" name="age" min="1" required placeholder="Idade em anos">
+            </div>
+
+            <div class="form-group">
+                <label for="sex">Sexo</label>
+                <select id="sex" name="sex" required>
+                    <option value="1">Masculino</option>
+                    <option value="0">Feminino</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="chest_pain_type">Tipo de Dor no Peito</label>
+                <select id="chest_pain_type" name="chest_pain_type" required>
+                    <option value="0">angina típica (0)</option>
+                    <option value="1">angina atípica (1)</option>
+                    <option value="2">dor não anginosa (2)</option>
+                    <option value="3">assintomático (3)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resting_blood_pressure">Pressão Arterial em Repouso</label>
+                
+                <input type="number" id="resting_blood_pressure" name="resting_blood_pressure" min="80" required placeholder="mm Hg">
+            </div>
+            
+            <div class="form-group">
+                <label for="cholesterol">Colesterol sérico</label>
+                
+                <input type="number" id="cholesterol" name="cholesterol" min="100" required placeholder="mg/dl">
+            </div>
+            
+            <div class="form-group">
+                <label for="fasting_blood_sugar">Açúcar Sangue em Jejum > 120 mg/dl</label>
+                <select id="fasting_blood_sugar" name="fasting_blood_sugar" required>
+                    <option value="1">Sim </option>
+                    <option value="0">Não </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resting_electrocardiogram">ECG em Repouso</label>
+                <select id="resting_electrocardiogram" name="resting_electrocardiogram" required>
+                    <option value="0">Normal (0)</option>
+                    <option value="1">Anormalidade na onda ST-T (1)</option>
+                    <option value="2">Hipertrofia Ventricular (2)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="max_heart_rate_achieved">Freq. Cardíaca Máxima Atingida</label>
+                
+                <input type="number" id="max_heart_rate_achieved" name="max_heart_rate_achieved" min="60" required placeholder="bpm">
+            </div>
+            
+            <div class="form-group">
+                <label for="exercise_induced_angina">Angina Induzida por Exercício?</label>
+                <select id="exercise_induced_angina" name="exercise_induced_angina" required>
+                    <option value="1">Sim </option>
+                    <option value="0">Não </option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="st_depression">Depressão do Segmento ST</label>
+                <input type="number" id="st_depression" name="st_depression" step="0.1" min="0" required placeholder="0.0">
+            </div>
+            
+            <div class="form-group">
+                <label for="st_slope">Inclinação do Segmento ST (st_slope)</label>
+                <select id="st_slope" name="st_slope" required>
+                    <option value="0">ascendente (0)</option>
+                    <option value="1">plano (1)</option>
+                    <option value="2">descendente (2)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="num_major_vessels">n° Vasos Coloridos pela fluoroscopia</label>
+                <select id="num_major_vessels" name="num_major_vessels" required>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="thalassemia">Talassemia</label>
+                <select id="thalassemia" name="thalassemia" required>
+                    <option value="1">Normal (1)</option>
+                    <option value="2">Defeito Fixo (2)</option>
+                    <option value="3">Defeito Reversível (3)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="button-submit">Prever Risco Cardíaco</button>
+        </form>
+
+        <div class="result-area" id="predictionResult">
+            Resultado da previsão aparecerá aqui.
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Impede o envio padrão do formulário
+
+            const form = event.target;
+            const data = {};
+            
+            // Coleta os dados do formulário e converte para float
+            const formData = new FormData(form);
+            formData.forEach((value, key) => {
+                data[key] = parseFloat(value); 
+            });
+            
+            // Console do navegador: mostra o JSON que está sendo enviado
+            console.log('Dados enviados para a API:', data);
+
+            // =======================================================
+            // CHAMADA REAL PARA A API BACKEND (FastAPI)
+            // =======================================================
+            
+            // A API está rodando em http://127.0.0.1:8000
+            fetch('http://127.0.0.1:8000/predict', { 
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                // Converte o objeto JavaScript 'data' em JSON
+                body: JSON.stringify(data) 
+            })
+            .then(response => {
+                // Trata erros de resposta HTTP (4xx, 5xx)
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.detail || 'Erro no servidor: Status ' + response.status) });
+                }
+                return response.json();
+            })
+            .then(result => {
+                // Recebe o resultado da API e atualiza o DOM
+                const resultDiv = document.getElementById('predictionResult');
+                
+                resultDiv.innerHTML = `
+                    <strong>Diagnóstico:</strong> ${result.diagnostico}
+                    <br>
+                    <strong>Risco:</strong> ${result.probabilidade_doenca}%
+                `;
+
+                // Atualiza o estilo baseado na previsão binária (0 ou 1)
+                if (result.previsao_binaria === 1) { // 1 = Doença Presente
+                    resultDiv.style.backgroundColor = '#f8d7da'; /* Vermelho claro */
+                    resultDiv.style.color = '#721c24';
+                    resultDiv.style.borderColor = '#f5c6cb';
+                } else {
+                    resultDiv.style.backgroundColor = '#d4edda'; /* Verde claro */
+                    resultDiv.style.color = '#155724';
+                    resultDiv.style.borderColor = '#c3e6cb';
+                }
+            })
+            .catch(error => {
+                // Trata erros de conexão (ex: API não está rodando)
+                const resultDiv = document.getElementById('predictionResult');
+                resultDiv.style.backgroundColor = '#fff3cd';
+                resultDiv.style.color = '#856404';
+                resultDiv.style.borderColor = '#ffeeba';
+                resultDiv.innerHTML = `<strong>ERRO DE CONEXÃO:</strong> ${error.message}. Certifique-se de que a API está rodando no terminal.`;
+                console.error('Erro na chamada da API:', error);
+            });
+        });
+    </script>
+</body>
+</html>
